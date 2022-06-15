@@ -3,31 +3,33 @@ title: "Data Science"
 author: "Laura Kiemes"
 date: "`r Sys.Date()`"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
-```{r}
+```{r packages verwenden, message=FALSE}
 library(tidyverse)
 library(gtrendsR)
 library(ggsci)
 ```
 
-```{r data frame for global programming languages}
+```{r data frames fuer interessierende Werte}
 data("countries") # Datensatz zu Laenderbezeichnungen
 countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
-geos <- c("DE", "") # interessierende Laender
 keywords_5 <- data.frame(c("python", "r", "java", "c", "swift"), # Schluesselworte Programmieren
                          c("sql", "excel", "word", "powerpoint", "tableau")) # Schlusselworte Programme
-times <- c("all", "today+5-y")
-list_data <- list() # leere Liste zum fuellen
-i <- 0
+geos <- c("DE", "") # interessierende Laender
+times <- c("all", "today+5-y") # interessierende Zeitfenster
+list_data <- list() # leere Liste zum Fuellen mit Datensaetzen
+list_plots <- list() # leeere Liste zum Fuellen mit Plots
+i <- 0 # Index zum Mitlaufen
 
 for (k in keywords_5) {
-  for (g in geos) {
-    for (t in times) {
+  for (t in times) {
+    for (g in geos) {
+      
       i <- i + 1
-      print(i)
+      print(paste(i, t, g, k))
       list_data[[i]] <- gtrends(
         keyword = k,
         geo = g,
@@ -42,42 +44,67 @@ for (k in keywords_5) {
         onlyInterest = FALSE
       )
       
+      list_plots[[i]] <- ggplot(
+        data = list_data[[i]][["interest_over_time"]],
+        aes(x = as.Date(date),
+            y = hits,
+            group = factor(keyword),
+            color = keyword)) +
+        geom_line(size = 0.8) +
+        labs(
+          title = paste("Suchanfragen zu", k, "in", g, "ueber", t),
+          subtitle = paste("bis", format(Sys.Date(), "%d. %e. %Y")),
+          x = "Zeit",
+          y = "Aufrufe in Prozent",
+          color = "Suchbegriff", 
+          caption = "Datenquelle: Google Trends (https://www.google.com/trends)."
+          ) +
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        plot.caption = element_text(size = 6, color = "gray60")) +
+        scale_x_date(date_labels = "%Y",
+                     date_breaks = "2 years",
+                     date_minor_breaks = "1 year") +
+        ggsci::scale_colour_locuszoom()
+      
+      print(last_plot())
+      
+      ggsave(filename = paste0("plot_", i, ".pdf"))
     }
   }
 }
-
-
-df_ger_all_lg <- gtrends(
-  keyword = c("python", "excel", "sql", "r", "java"),
-  geo = "DE", 
-  time = "all",
-  gprop = c("web"),
-  category = 0,
-  hl = "de",
-  compared_breakdown = TRUE,
-  low_search_volume = FALSE,
-  cookie_url = "http://trends.google.com/Cookies/NID",
-  tz = 0,
-  onlyInterest = FALSE
-)
-
-ggplot(df_german_all$interest_over_time, 
-       aes(x = as.Date(date), y = hits, group = factor(keyword), color = keyword)) +
-  geom_line(size = 0.8) +
-  labs(
-    title = "Google-Suchanfragen nach Programmiersprachen im Zeitverlauf",
-    x = "Zeit",
-    y = "Aufrufe in Prozent",
-    color = "Suchbegriff", 
-    caption = "Datenquelle: Google Trends (https://www.google.com/trends)."
-  ) +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 35, hjust = 1),
-        plot.caption = element_text(size = 6, color = "gray60")) +
-  scale_x_date(date_labels = "%Y",
-               date_breaks = "2 years",
-               date_minor_breaks = "1 year") +
-  ggsci::scale_colour_locuszoom()
-
 ```
+
+```{r plots fuer jeden datensatz}
+list_plots <- list()
+
+for (l in 1:length(list_data)) {
+  
+  print(l)
+  
+  list_plots[[l]] <- ggplot(data = list_data[[l]][["interest_over_time"]],
+         aes(x = as.Date(date),
+             y = hits,
+             group = factor(keyword),
+             color = keyword)) +
+    geom_line(size = 0.8) +
+    labs(
+      x = "Zeit",
+      y = "Aufrufe in Prozent",
+      color = "Suchbegriff", 
+      caption = "Datenquelle: Google Trends (https://www.google.com/trends)."
+    ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1),
+    plot.caption = element_text(size = 6, color = "gray60")) +
+    scale_x_date(date_labels = "%Y",
+                 date_breaks = "2 years",
+                 date_minor_breaks = "1 year") +
+    ggsci::scale_colour_locuszoom()
+  
+  print(list_plots[[l]])
+  
+}
+```
+
 
