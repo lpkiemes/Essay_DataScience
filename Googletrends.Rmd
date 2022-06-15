@@ -1,0 +1,83 @@
+---
+title: "Data Science"
+author: "Laura Kiemes"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+```{r}
+library(tidyverse)
+library(gtrendsR)
+library(ggsci)
+```
+
+```{r data frame for global programming languages}
+data("countries") # Datensatz zu Laenderbezeichnungen
+countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
+geos <- c("DE", "") # interessierende Laender
+keywords_5 <- data.frame(c("python", "r", "java", "c", "swift"), # Schluesselworte Programmieren
+                         c("sql", "excel", "word", "powerpoint", "tableau")) # Schlusselworte Programme
+times <- c("all", "today+5-y")
+list_data <- list() # leere Liste zum fuellen
+i <- 0
+
+for (k in keywords_5) {
+  for (g in geos) {
+    for (t in times) {
+      i <- i + 1
+      print(i)
+      list_data[[i]] <- gtrends(
+        keyword = k,
+        geo = g,
+        time = t,
+        gprop = "web",
+        category = 0,
+        hl = "de",
+        compared_breakdown = TRUE,
+        low_search_volume = FALSE,
+        cookie_url = "http://trends.google.com/Cookies/NID",
+        tz = 0,
+        onlyInterest = FALSE
+      )
+      
+    }
+  }
+}
+
+
+df_ger_all_lg <- gtrends(
+  keyword = c("python", "excel", "sql", "r", "java"),
+  geo = "DE", 
+  time = "all",
+  gprop = c("web"),
+  category = 0,
+  hl = "de",
+  compared_breakdown = TRUE,
+  low_search_volume = FALSE,
+  cookie_url = "http://trends.google.com/Cookies/NID",
+  tz = 0,
+  onlyInterest = FALSE
+)
+
+ggplot(df_german_all$interest_over_time, 
+       aes(x = as.Date(date), y = hits, group = factor(keyword), color = keyword)) +
+  geom_line(size = 0.8) +
+  labs(
+    title = "Google-Suchanfragen nach Programmiersprachen im Zeitverlauf",
+    x = "Zeit",
+    y = "Aufrufe in Prozent",
+    color = "Suchbegriff", 
+    caption = "Datenquelle: Google Trends (https://www.google.com/trends)."
+  ) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        plot.caption = element_text(size = 6, color = "gray60")) +
+  scale_x_date(date_labels = "%Y",
+               date_breaks = "2 years",
+               date_minor_breaks = "1 year") +
+  ggsci::scale_colour_locuszoom()
+
+```
+
