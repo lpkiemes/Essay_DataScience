@@ -1,25 +1,35 @@
 ---
 title: "Data Science"
-author: "Laura Kiemes"
+author: "Laura Kiemes, 12250912"
 date: "`r Sys.Date()`"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
-```{r packages verwenden, message=FALSE}
-library(tidyverse)
-library(gtrendsR)
-library(ggsci)
+```{r packages verwenden}
+here::i_am("Googletrends.Rmd")
+
+# Falls pacman nicht installiert ist wird es installiert und geladen
+if (!require("pacman")) install.packages("pacman"); library(pacman)
+
+# Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
+p_load(tidyverse, gtrendsR, ggsci) 
+
+dir.create("plots")
+dir.create("tables")
 ```
 
 ```{r data frames fuer interessierende Werte}
 data("countries") # Datensatz zu Laenderbezeichnungen
 countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
-keywords_5 <- data.frame(c("python", "r", "java", "c", "swift"), # Schluesselworte Programmieren
-                         c("sql", "excel", "word", "powerpoint", "tableau")) # Schlusselworte Programme
+keywords_5 <- data.frame(
+  languages = c("python", "r", "java", "php", "javascript"), # Schluesselworte Programmieren
+                         
+  text = c("sql", "excel", "word", "powerpoint", "tableau")) # Schlusselworte Programme
+setNames(keywords_5, c("languages", "text"))
 geos <- c("DE", "") # interessierende Laender
-times <- c("all", "today+5-y") # interessierende Zeitfenster
+times <- c("all", "today+5-y", "today 12-m") # interessierende Zeitfenster
 list_data <- list() # leere Liste zum Fuellen mit Datensaetzen
 list_plots <- list() # leeere Liste zum Fuellen mit Plots
 i <- 0 # Index zum Mitlaufen
@@ -50,21 +60,24 @@ for (k in keywords_5) {
             y = hits,
             group = factor(keyword),
             color = keyword)) +
-        geom_line(size = 0.8) +
+        geom_line(size = 1) +
         labs(
           title = paste("Suchanfragen zu", k, "in", g, "ueber", t),
-          subtitle = paste("bis", format(Sys.Date(), "%d. %e. %Y")),
+          subtitle = paste("bis", format(Sys.Date(), "%d. %B %Y")),
           x = "Zeit",
           y = "Aufrufe in Prozent",
           color = "Suchbegriff", 
-          caption = "Datenquelle: Google Trends (https://www.google.com/trends)."
-          ) +
+          caption = paste0("Datenquelle: Google Trends 
+          (https://www.google.com/trends, abgefragt am ", format(Sys.Date(), "%d.%m.%Y"), ").")
+          )+
         theme_bw() +
         theme(axis.text.x = element_text(angle = 35, hjust = 1),
-        plot.caption = element_text(size = 6, color = "gray60")) +
+        plot.caption = element_text(size = 6, color = "gray60"),
+        legend.position = "bottom") +
         scale_x_date(date_labels = "%Y",
                      date_breaks = "2 years",
                      date_minor_breaks = "1 year") +
+       # scale_y_continuous(labels = scales::percent) +
         ggsci::scale_colour_locuszoom()
       
       print(last_plot())
@@ -75,36 +88,16 @@ for (k in keywords_5) {
 }
 ```
 
-```{r plots fuer jeden datensatz}
-list_plots <- list()
+```{r plot 1}
+list_plots[[1]] <- list_plots[[1]] + labs(title = "Google-Suchanfragen zu Programmiersprachen in Deutschland",
+                       subtitle = paste("von 2004 bis", format(Sys.Date(), "%d.%m.%Y")))
 
-for (l in 1:length(list_data)) {
-  
-  print(l)
-  
-  list_plots[[l]] <- ggplot(data = list_data[[l]][["interest_over_time"]],
-         aes(x = as.Date(date),
-             y = hits,
-             group = factor(keyword),
-             color = keyword)) +
-    geom_line(size = 0.8) +
-    labs(
-      x = "Zeit",
-      y = "Aufrufe in Prozent",
-      color = "Suchbegriff", 
-      caption = "Datenquelle: Google Trends (https://www.google.com/trends)."
-    ) +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 35, hjust = 1),
-    plot.caption = element_text(size = 6, color = "gray60")) +
-    scale_x_date(date_labels = "%Y",
-                 date_breaks = "2 years",
-                 date_minor_breaks = "1 year") +
-    ggsci::scale_colour_locuszoom()
-  
-  print(list_plots[[l]])
-  
-}
+ggsave(filename = "plot_1.pdf", plot = list_plots[[1]], width = 9, height = 6)
+
+table_1 <- as.data.frame(list_data[[1]][["interest_over_time"]])
+
+write_csv(table_1, path = here::here("tables", "table_1.csv"))
 ```
+
 
 
