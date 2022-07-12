@@ -1,2 +1,1 @@
-# Essay_DataScience
-project essay for module in sociology
+Das ist ein Projekt zur Anfertigen eines Werkstücks im Modul Soziologische Vertiefung 1 an der Ludwig-Maximilians-Universität in München. 
