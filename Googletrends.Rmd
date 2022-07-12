@@ -1,52 +1,77 @@
 ---
-title: "Data Science"
-author: "Laura Kiemes, 12250912"
+title: "Data Science, Computational Social Science, Big Data:" 
+subtitle: "Programmieren für Sozialwissenschaftler_innen"
+author: "Laura Kiemes 12250912 & Felix Grams 12293142"
 date: "`r Sys.Date()`"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: 1
   html_document:
-    df_print: paged
-  pdf_document: default
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: yes
+  word_document:
+    toc: yes
+    toc_depth: 1
+toc-title: Inhalt
 ---
-```{r packages verwenden}
+R version 4.2.0 (2022-04-22)  
+Platform: x86_64-apple-darwin17.0 (64-bit)  
+Running under: macOS Monterey 12.4
+
+# Pakete und Ordner
+Zunächst wird das Pacman Paket installiert, falls dies noch nicht installiert wurde. Als nächstes wird dieses zusätzlich geladen. Über Pacman werden anschließend alle verwendeten Pakete installiert, falls dies noch nicht geschehen ist und ansonsten geladen.  
+Die Ordner Plots und Tables werden erstellt. Das Referenzdatum wird festgelegt.
+```{r packages verwenden und ordner erstellen, message=FALSE, warning=FALSE}
 here::i_am("Googletrends.Rmd")
 
 # Falls pacman nicht installiert ist wird es installiert und geladen
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 
 # Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
-p_load(tidyverse, gtrendsR, ggsci) 
+pacman::p_load(tidyverse, gtrendsR, ggsci, maps, rtweet, patchwork, lubridate) 
 
 dir.create("plots")
 dir.create("tables")
 ```
 
-```{r data frames fuer interessierende Werte}
+```{r Analysedatum}
+date_analysis <- ymd("2022-07-01")
+```
+# Gtrends
+Zunächst werden Variationen für die Gtrends-Abfrage angelegt.
+```{r Variationen definieren}
 data("countries") # Datensatz zu Laenderbezeichnungen
 countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
 keywords_5 <- data.frame(
   languages = c("python", "r", "java", "php", "javascript"), # Schluesselworte Programmieren
                          
   text = c("sql", "excel", "word", "powerpoint", "tableau")) # Schlusselworte Programme
-setNames(keywords_5, c("languages", "text"))
 geos <- c("DE", "") # interessierende Laender
-times <- c("all", "today+5-y", "today 12-m") # interessierende Zeitfenster
+times <- c("all", "2017-07-01 2022-07-01", "today 12-m") # interessierende Zeitfenster
 list_data <- list() # leere Liste zum Fuellen mit Datensaetzen
 list_plots <- list() # leeere Liste zum Fuellen mit Plots
+```
+Dann iterieren wir über die verschiedenen Iterationen und speichern die erzeugten Objekte als csv Dateien und in einem Listenobjekt.
+```{r for loop Daten}
 i <- 0 # Index zum Mitlaufen
 
 for (k in keywords_5) {
   for (t in times) {
     for (g in geos) {
       
-      i <- i + 1
-      print(paste(i, t, g, k))
+      i <- i + 1 # Indexzaehler
+      print(paste(i, t, g, k)) # Iteration anzeigen
+      
       list_data[[i]] <- gtrends(
         keyword = k,
         geo = g,
         time = t,
         gprop = "web",
         category = 0,
-        hl = "de",
+        hl = "en-US",
         compared_breakdown = TRUE,
         low_search_volume = FALSE,
         cookie_url = "http://trends.google.com/Cookies/NID",
@@ -54,6 +79,26 @@ for (k in keywords_5) {
         onlyInterest = FALSE
       )
       
+      write_csv(as.data.frame( # Tabellen erstellen
+        list_data[[i]][["interest_over_time"]]), 
+        file = here::here("tables", paste0("table_", i, ".csv")))
+
+    }
+  }
+}
+
+names(list_data) <- c("prog_all_de", "prog_all_int", 
+                      "prog_5y_de", "prog_5y_int", 
+                      "prog_12_de", "prog_12m_int", 
+                      "txt_all_de", "txt_all_int", 
+                      "txt_5y_de", "txt_5y_int", 
+                      "txt_12_de", "txt_12m_int")
+```
+# Plots
+Anschließend iterieren wir über die erzeugten Listen mit den Datensätzen und erstellen jeweils einen Plot pro Datensatz.
+```{r for loop Plots}
+for (i in 1:12) {
+
       list_plots[[i]] <- ggplot(
         data = list_data[[i]][["interest_over_time"]],
         aes(x = as.Date(date),
@@ -62,41 +107,166 @@ for (k in keywords_5) {
             color = keyword)) +
         geom_line(size = 1) +
         labs(
-          title = paste("Suchanfragen zu", k, "in", g, "ueber", t),
-          subtitle = paste("bis", format(Sys.Date(), "%d. %B %Y")),
           x = "Zeit",
-          y = "Aufrufe in Prozent",
+          y = "normalisierte, skalierte Aufrufe in Prozent",
           color = "Suchbegriff", 
           caption = paste0("Datenquelle: Google Trends 
-          (https://www.google.com/trends, abgefragt am ", format(Sys.Date(), "%d.%m.%Y"), ").")
-          )+
+          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")
+          ) +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 35, hjust = 1),
-        plot.caption = element_text(size = 6, color = "gray60"),
-        legend.position = "bottom") +
+        theme(
+          axis.text.x = element_text(angle = 35, hjust = 1),
+          plot.caption = element_text(size = 6, color = "gray60"),
+          legend.title = element_text(size = 10),
+          legend.text = element_text(size = 8),
+          legend.position = "bottom") +
         scale_x_date(date_labels = "%Y",
                      date_breaks = "2 years",
                      date_minor_breaks = "1 year") +
-       # scale_y_continuous(labels = scales::percent) +
+      #  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
         ggsci::scale_colour_locuszoom()
       
-      print(last_plot())
+      print(last_plot()) # anzeigen lassen
       
-      ggsave(filename = paste0("plot_", i, ".pdf"))
-    }
+}
+
+names(list_plots) <- c("prog_all_de", "prog_all_int", 
+                      "prog_5y_de", "prog_5y_int", 
+                      "prog_12_de", "prog_12m_int")
+```
+Für die erstellten Plots fügen wir als nächstes jeweilis Titel und Untertitel als Vektor bereit und ordnen diese innerhalb einer Schleife basierend auf den Index zu. 
+```{r for loop plot names}
+indice_5 <- c(3, 4, 9, 10)
+indice_12 <- c(5, 6, 11, 12)
+
+titles <- c(
+  "Suchanfragen zu Programmiersprachen in Deutschland",
+  "Suchanfragen zu Programmiersprachen weltweit",
+  "Suchanfragen zu Programmiersprachen in Deutschland",
+  "Suchanfragen zu Programmiersprachen weltweit",
+  "Suchanfragen zu Programmiersprachen in Deutschland",
+  "Suchanfragen zu Programmiersprachen weltweit",
+  "Suchanfragen zu Programmen in Deutschland",
+  "Suchanfragen zu Programmen weltweit",
+  "Suchanfragen zu Programmen in Deutschland",
+  "Suchanfragen zu Programmen weltweit",
+  "Suchanfragen zu Programmen in Deutschland",
+  "Suchanfragen zu Programmen weltweit"
+)
+
+subtitles <- c(
+  "seit 2004",
+  "seit 2004",
+  "innerhalb der letzten fünf Jahre",
+  "innerhalb der letzten fünf Jahre",
+  "innerhalb der letzten 12 Monate",
+  "innerhalb der letzten 12 Monate",
+  "seit 2004",
+  "seit 2004",
+  "innerhalb der letzten fünf Jahre",
+  "innerhalb der letzten fünf Jahre",
+  "innerhalb der letzten 12 Monate",
+  "innerhalb der letzten 12 Monate"
+)
+
+for (n in 1:12) {
+  list_plots[[n]] <- list_plots[[n]] + labs(title = titles[[n]], subtitle = subtitles[[n]])
+  
+  if (n %in% indice_5) { # falls innerhalb der letzten 5 Jahre
+    list_plots[[n]] <- list_plots[[n]] + scale_x_date(date_labels = "%Y",
+                                                      date_breaks = "1 years",
+                                                      date_minor_breaks = "1 months")
+  } else if (n %in% indice_12) { # falls innerhalb der letzten 12 monate
+    list_plots[[n]] <- list_plots[[n]] + scale_x_date(date_labels = "%B %Y",
+                                                      date_breaks = "1 months")
   }
+
+  ggsave(filename = paste0("plot_", n, ".pdf"), 
+         plot = list_plots[[n]], 
+         width = 9, height = 5, 
+         path = here::here("plots"))
+  
+  ggsave(filename = paste0("small_plot_", n, ".pdf"), 
+         plot = list_plots[[n]], 
+         width = 6, 
+         height = 6, 
+         path = here::here("plots"))
+
+  write_csv(as.data.frame(
+    list_data[[1]][["interest_over_time"]]), 
+    path = here::here("tables", paste0("table_time_", n, ".csv")))
+}
+```
+For Loop zum Erstellen von zwei Grafiken nebeneinander innerhalb einer PDF.
+```{r for loop plots 2 col}
+list_plots_2col <- list() # leeere Liste zum Fuellen mit Doppel-Plots
+
+for (i in 1:5) {
+  
+  list_plots_2col[[i]] <- list_plots[[i]] + list_plots[[i + 1]]
+  print(list_plots_2col[[i]])
+  
+  ggsave(filename = paste0("2col_plot_", i, ".pdf"), 
+         plot = list_plots_2col[[i]], 
+         width = 12, 
+         height = 6, 
+         path = here::here("plots"))
+
+}
+```
+For Loop zum Erstellen von zwei Grafiken untereinander innerhalb einer PDF.
+```{r for loop plots 1 col}
+list_plots_1col <- list() # leeere Liste zum Fuellen mit Doppel-Plots
+
+for (i in 1:5) {
+  
+  list_plots_1col[[i]] <- list_plots[[i]] / list_plots[[i + 1]]
+  print(list_plots_1col[[i]])
+  
+  ggsave(filename = paste0("1col_plot_", i, ".pdf"), 
+         plot = list_plots_1col[[i]], 
+         width = 8, 
+         height = 8, 
+         path = here::here("plots"))
+
 }
 ```
 
-```{r plot 1}
-list_plots[[1]] <- list_plots[[1]] + labs(title = "Google-Suchanfragen zu Programmiersprachen in Deutschland",
-                       subtitle = paste("von 2004 bis", format(Sys.Date(), "%d.%m.%Y")))
 
-ggsave(filename = "plot_1.pdf", plot = list_plots[[1]], width = 9, height = 6)
+```{r}
+world <- map_data("world") # Weltdaten einlesen
 
-table_1 <- as.data.frame(list_data[[1]][["interest_over_time"]])
+# aendert die Regionnamen zu denen, die Google Trends verwendet 
+world <- world %>%
+  mutate(region = replace(region, region=="USA", "United States")) %>%
+  mutate(region = replace(region, region=="UK", "United Kingdom"))
+ 
+# perform search
+# res_world <- gtrends("wantok", time = "all")
+ 
+# create data frame for plotting
+#res_world$interest_by_country %>%
+  #filter(location %in% world$region, hits > 0) %>%
+  #mutate(region = location, hits = as.numeric(hits)) %>%
+  #select(region, hits) -> my_df
 
-write_csv(table_1, path = here::here("tables", "table_1.csv"))
+my_df <- list_data[[2]][["interest_by_country"]] %>%
+  filter(location %in% world$region, hits > 0) %>%
+  mutate(region = location, hits = as.numeric(hits))
+ 
+ggplot() +
+  geom_map(data = world,
+           map = world,
+           aes(x = long, y = lat, map_id = region),
+           fill="#ffffff", color="#ffffff", size=0.15) +
+  geom_map(data = my_df,
+           map = world,
+           aes(fill = hits, map_id = region),
+           color="#ffffff", size = 0.15) +
+  scale_fill_continuous(low = 'grey', high = 'red') +
+  theme(axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank())
 ```
 
 
