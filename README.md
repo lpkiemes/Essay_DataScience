@@ -3,7 +3,7 @@ Das ist ein Projekt zur Anfertigen eines Werkstücks im Modul Soziologische Vert
 1. Google Trends
   - Googletrends_01.R
   - Googletrends_02.R
-  - oder komplett: Googletrends.Rmd bzw erzeugt Googletrends.pdf
+  - oder komplett: Googletrends.Rmd bzw. erzeugt Googletrends.pdf und Googletrends.html
 2. Twitter
   - TwitterAPI_01.R
   
