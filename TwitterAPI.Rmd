@@ -1,0 +1,61 @@
+---
+title: "Data Science, Computational Social Science, Big Data:" 
+subtitle: "Programmieren für Sozialwissenschaftler_innen"
+author: "Laura Kiemes 12250912 & Felix Grams 12293142"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+  word_document:
+    toc: yes
+    toc_depth: 1
+toc-title: Inhalt
+---
+R version 4.2.0 (2022-04-22)  
+Platform: x86_64-apple-darwin17.0 (64-bit)  
+Running under: macOS Monterey 12.4
+
+```{r packages}
+here::i_am("TwitterAPI.Rmd")
+
+# Falls pacman nicht installiert ist wird es installiert und geladen
+if (!require("pacman")) install.packages("pacman"); library(pacman)
+
+# Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
+pacman::p_load(rtweet, tidyverse, stringr) 
+```
+
+```{r }
+bearer <- "AAAAAAAAAAAAAAAAAAAAAAWHZAEAAAAAhHIicgDn3R9yS7nBtA9d%2FpkhqCs%3DU77ZArq8vNCTAndsFUhjQrhpI38w06Gsv3pOraXgeLD0xsd24v"
+
+#rt <- rtweet::search_tweets("python")
+```
+
+```{r}
+tweets_python <- read.csv2(here::here("tweet_sentiment_python.csv"), sep = ";")
+
+str(tweets_python)
+
+tweets_python[1, "sentiment"]
+
+ttt <- tweets_python %>%
+  select(sentiment) %>%
+  mutate(polarity = str_remove_all(sentiment, "[:alpha:]")) %>%
+  mutate(polarity = str_remove_all(polarity, "\\(")) %>%
+  mutate(polarity = str_remove_all(polarity, "\\=")) %>%
+  mutate(polarity = str_remove_all(polarity, "\\)")) %>%
+  mutate(polarity = str_remove_all(polarity, "[:blank:]")) %>%
+  separate(polarity, c('polarity', 'subjectivity'), sep = ",") %>%
+  mutate(polarity = as.numeric(polarity),
+         subjectivity = as.numeric(subjectivity))
+
+mean(ttt$polarity)
+mean(ttt$subjectivity)
+```
+
