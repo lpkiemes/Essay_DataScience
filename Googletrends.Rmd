@@ -4,6 +4,9 @@ subtitle: "Programmieren für Sozialwissenschaftler_innen"
 author: "Laura Kiemes 12250912 & Felix Grams 12293142"
 date: "`r Sys.Date()`"
 output:
+  word_document:
+    toc: yes
+    toc_depth: 1
   pdf_document:
     toc: yes
     toc_depth: 1
@@ -12,9 +15,6 @@ output:
     toc_depth: 2
     toc_float:
       collapsed: yes
-  word_document:
-    toc: yes
-    toc_depth: 1
 toc-title: Inhalt
 ---
 R version 4.2.0 (2022-04-22)  
@@ -35,9 +35,7 @@ pacman::p_load(tidyverse, gtrendsR, ggsci, maps, rtweet, patchwork, lubridate)
 
 dir.create("plots")
 dir.create("tables")
-```
 
-```{r Analysedatum}
 date_analysis <- ymd("2022-07-01")
 ```
 # Gtrends
@@ -46,15 +44,15 @@ Zunächst werden Variationen für die Gtrends-Abfrage angelegt.
 data("countries") # Datensatz zu Laenderbezeichnungen
 countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
 keywords_5 <- data.frame(
-  languages = c("python", "r", "java", "php", "javascript"), # Schluesselworte Programmieren
-                         
-  text = c("sql", "excel", "word", "powerpoint", "tableau")) # Schlusselworte Programme
+  languages = c("python", "r", "java", "php", "javascript")) # Schlusselworte Sprachen
 geos <- c("DE", "") # interessierende Laender
-times <- c("all", "2017-07-01 2022-07-01", "today 12-m") # interessierende Zeitfenster
+times <- c("2004-07-01 2022-07-01", # 18 Jahre
+           "2017-07-01 2022-07-01", # 5 Jahre
+           "2021-07-01 2022-07-01") # 1 Jahr
 list_data <- list() # leere Liste zum Fuellen mit Datensaetzen
 list_plots <- list() # leeere Liste zum Fuellen mit Plots
 ```
-Dann iterieren wir über die verschiedenen Iterationen und speichern die erzeugten Objekte als csv Dateien und in einem Listenobjekt.
+Dann iterieren wir und speichern die erzeugten Objekte als csv Dateien und in einem Listenobjekt.
 ```{r for loop Daten}
 i <- 0 # Index zum Mitlaufen
 
@@ -89,15 +87,12 @@ for (k in keywords_5) {
 
 names(list_data) <- c("prog_all_de", "prog_all_int", 
                       "prog_5y_de", "prog_5y_int", 
-                      "prog_12_de", "prog_12m_int", 
-                      "txt_all_de", "txt_all_int", 
-                      "txt_5y_de", "txt_5y_int", 
-                      "txt_12_de", "txt_12m_int")
+                      "prog_12_de", "prog_12m_int")
 ```
 # Plots
 Anschließend iterieren wir über die erzeugten Listen mit den Datensätzen und erstellen jeweils einen Plot pro Datensatz.
 ```{r for loop Plots}
-for (i in 1:12) {
+for (i in 1:length(list_data)) {
 
       list_plots[[i]] <- ggplot(
         data = list_data[[i]][["interest_over_time"]],
@@ -108,7 +103,7 @@ for (i in 1:12) {
         geom_line(size = 1) +
         labs(
           x = "Zeit",
-          y = "normalisierte, skalierte Aufrufe in Prozent",
+          y = "normalisierte, skalierte Aufrufe",
           color = "Suchbegriff", 
           caption = paste0("Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")
@@ -123,7 +118,7 @@ for (i in 1:12) {
         scale_x_date(date_labels = "%Y",
                      date_breaks = "2 years",
                      date_minor_breaks = "1 year") +
-      #  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+        scale_y_continuous(labels = scales::percent_format(scale = 1)) +
         ggsci::scale_colour_locuszoom()
       
       print(last_plot()) # anzeigen lassen
@@ -136,8 +131,8 @@ names(list_plots) <- c("prog_all_de", "prog_all_int",
 ```
 Für die erstellten Plots fügen wir als nächstes jeweilis Titel und Untertitel als Vektor bereit und ordnen diese innerhalb einer Schleife basierend auf den Index zu. 
 ```{r for loop plot names}
-indice_5 <- c(3, 4, 9, 10)
-indice_12 <- c(5, 6, 11, 12)
+indice_5 <- c(3, 4)
+indice_12 <- c(5, 6)
 
 titles <- c(
   "Suchanfragen zu Programmiersprachen in Deutschland",
@@ -145,13 +140,7 @@ titles <- c(
   "Suchanfragen zu Programmiersprachen in Deutschland",
   "Suchanfragen zu Programmiersprachen weltweit",
   "Suchanfragen zu Programmiersprachen in Deutschland",
-  "Suchanfragen zu Programmiersprachen weltweit",
-  "Suchanfragen zu Programmen in Deutschland",
-  "Suchanfragen zu Programmen weltweit",
-  "Suchanfragen zu Programmen in Deutschland",
-  "Suchanfragen zu Programmen weltweit",
-  "Suchanfragen zu Programmen in Deutschland",
-  "Suchanfragen zu Programmen weltweit"
+  "Suchanfragen zu Programmiersprachen weltweit"
 )
 
 subtitles <- c(
@@ -160,16 +149,10 @@ subtitles <- c(
   "innerhalb der letzten fünf Jahre",
   "innerhalb der letzten fünf Jahre",
   "innerhalb der letzten 12 Monate",
-  "innerhalb der letzten 12 Monate",
-  "seit 2004",
-  "seit 2004",
-  "innerhalb der letzten fünf Jahre",
-  "innerhalb der letzten fünf Jahre",
-  "innerhalb der letzten 12 Monate",
   "innerhalb der letzten 12 Monate"
 )
 
-for (n in 1:12) {
+for (n in 1:length(list_data)) {
   list_plots[[n]] <- list_plots[[n]] + labs(title = titles[[n]], subtitle = subtitles[[n]])
   
   if (n %in% indice_5) { # falls innerhalb der letzten 5 Jahre
@@ -194,7 +177,7 @@ for (n in 1:12) {
 
   write_csv(as.data.frame(
     list_data[[1]][["interest_over_time"]]), 
-    path = here::here("tables", paste0("table_time_", n, ".csv")))
+    file = here::here("tables", paste0("table_time_", n, ".csv")))
 }
 ```
 For Loop zum Erstellen von zwei Grafiken nebeneinander innerhalb einer PDF.
@@ -268,6 +251,3 @@ ggplot() +
         axis.text = element_blank(),
         axis.title = element_blank())
 ```
-
-
-
