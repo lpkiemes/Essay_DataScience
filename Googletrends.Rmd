@@ -59,7 +59,7 @@ geos <- c("DE", "") # interessierende Laender
 times <- c("2004-07-01 2022-07-01", # 18 Jahre
            "2017-07-01 2022-07-01", # 5 Jahre
            "2021-07-01 2022-07-01") # 1 Jahr
-list_data <- list() # leere Liste zum Fuellen mit Datensaetzen
+list_google_data <- list() # leere Liste zum Fuellen mit Datensaetzen
 list_plots <- list() # leeere Liste zum Fuellen mit Plots
 ```
 Dann iterieren wir und speichern die erzeugten Objekte als csv Dateien und in einem Listenobjekt.
@@ -73,7 +73,7 @@ for (k in keywords_5) {
       i <- i + 1 # Indexzaehler
       print(paste(i, t, g, k)) # Iteration anzeigen
       
-      list_data[[i]] <- gtrends(
+      list_google_data[[i]] <- gtrends(
         keyword = k,
         geo = g,
         time = t,
@@ -86,26 +86,22 @@ for (k in keywords_5) {
         tz = 0,
         onlyInterest = FALSE
       )
-      
-      write_csv(as.data.frame( # Tabellen erstellen
-        list_data[[i]][["interest_over_time"]]), 
-        file = here::here("tables", paste0("table_", i, ".csv")))
 
     }
   }
 }
 
-names(list_data) <- c("prog_all_de", "prog_all_int", 
+names(list_google_data) <- c("prog_all_de", "prog_all_int", 
                       "prog_5y_de", "prog_5y_int", 
                       "prog_12_de", "prog_12m_int")
 ```
 # Plots
 Anschließend iterieren wir über die erzeugten Listen mit den Datensätzen und erstellen jeweils einen Plot pro Datensatz.
 ```{r for loop Plots}
-for (i in 1:length(list_data)) {
+for (i in 1:length(list_google_data)) {
 
       list_plots[[i]] <- ggplot(
-        data = list_data[[i]][["interest_over_time"]],
+        data = list_google_data[[i]][["interest_over_time"]],
         aes(x = as.Date(date),
             y = hits,
             group = factor(keyword),
@@ -162,7 +158,7 @@ subtitles <- c(
   "innerhalb der letzten 12 Monate"
 )
 
-for (n in 1:length(list_data)) {
+for (n in 1:length(list_google_data)) {
   list_plots[[n]] <- list_plots[[n]] + labs(title = titles[[n]], subtitle = subtitles[[n]])
   
   if (n %in% indice_5) { # falls innerhalb der letzten 5 Jahre
@@ -174,19 +170,19 @@ for (n in 1:length(list_data)) {
                                                       date_breaks = "1 months")
   }
 
-  ggsave(filename = paste0("plot_", n, ".pdf"), 
+  ggsave(filename = paste0("plot_", n, ".png"), 
          plot = list_plots[[n]], 
          width = 9, height = 5, 
          path = here::here("plots"))
   
-  ggsave(filename = paste0("small_plot_", n, ".pdf"), 
+  ggsave(filename = paste0("small_plot_", n, ".png"), 
          plot = list_plots[[n]], 
          width = 6, 
          height = 6, 
          path = here::here("plots"))
 
   write_csv(as.data.frame(
-    list_data[[1]][["interest_over_time"]]), 
+    list_google_data[[1]][["interest_over_time"]]), 
     file = here::here("tables", paste0("table_time_", n, ".csv")))
 }
 ```
@@ -246,7 +242,7 @@ list_plot_time_names[[e]] <- ggplot() +
   
   print(last_plot())
   
-  ggsave(filename = paste0("plot_map_all_", names(times)[[e]], ".pdf"), 
+  ggsave(filename = paste0("plot_map_all_", names(times)[[e]], ".png"), 
          plot = list_plot_time_names[[e]], 
          width = 9, height = 5, 
          path = here::here("plots"))
@@ -290,10 +286,14 @@ list_google_plots[[l]] <- ggplot() +
   
   print(last_plot())
   
-  ggsave(filename = paste0("plot_map_", names(colors_locuszoom_light)[l], ".pdf"), 
+  ggsave(filename = paste0("plot_map_", names(colors_locuszoom_light)[l], ".png"), 
          plot = list_google_plots[[l]], 
          width = 9, height = 5, 
          path = here::here("plots"))
 }
+```
+
+```{r}
+
 ```
 
