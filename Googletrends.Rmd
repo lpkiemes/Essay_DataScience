@@ -31,7 +31,7 @@ here::i_am("Googletrends.Rmd")
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 
 # Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
-pacman::p_load(tidyverse, gtrendsR, ggsci, maps, rtweet, patchwork, lubridate) 
+pacman::p_load(tidyverse, gtrendsR, ggsci, maps, rtweet, patchwork, lubridate, scales) 
 
 dir.create("plots")
 dir.create("tables")
@@ -224,30 +224,38 @@ world <- world %>%
   mutate(region = replace(region, region=="USA", "United States")) %>%
   mutate(region = replace(region, region=="UK", "United Kingdom"))
  
-# perform search
-# res_world <- gtrends("wantok", time = "all")
- 
-# create data frame for plotting
-#res_world$interest_by_country %>%
-  #filter(location %in% world$region, hits > 0) %>%
-  #mutate(region = location, hits = as.numeric(hits)) %>%
-  #select(region, hits) -> my_df
 
-my_df <- list_data[[2]][["interest_by_country"]] %>%
+data_2004_all <- list_data[["prog_all_int"]][["interest_by_country"]] %>%
   filter(location %in% world$region, hits > 0) %>%
-  mutate(region = location, hits = as.numeric(hits))
- 
+  mutate(region = location, 
+         hits = as.numeric(str_remove_all(hits, "%"))) %>%
+  select(hits, keyword, region) %>%
+  group_by(region) %>%
+  arrange(region, desc(hits)) %>%
+  slice(1)
+```
+
+```{r}
+show_col(pal_locuszoom("default")(5))
+
 ggplot() +
   geom_map(data = world,
            map = world,
            aes(x = long, y = lat, map_id = region),
-           fill="#ffffff", color="#ffffff", size=0.15) +
-  geom_map(data = my_df,
-           map = world,
-           aes(fill = hits, map_id = region),
-           color="#ffffff", size = 0.15) +
-  scale_fill_continuous(low = 'grey', high = 'red') +
+           fill="#e5e5e5", color="#bababa", size=0.15) +
+  geom_map(data = data_2004_all, 
+           map = world, 
+           aes(fill = keyword, map_id = region, alpha = hits)) +
+  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2004") +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank(),
-        axis.title = element_blank())
+        axis.title = element_blank()) +
+  theme_void() +
+  labs(fill = "Suchwort",
+       alpha = "Prozentzahl der 
+       Suchanfragen") +
+  scale_fill_manual(values = c("#D43F3AFF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
+
+
 ```
+
