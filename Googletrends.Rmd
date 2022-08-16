@@ -216,15 +216,16 @@ for (i in 1:5) {
 ```
 
 
-```{r}
+```{r weltdaten}
 world <- map_data("world") # Weltdaten einlesen
 
 # aendert die Regionnamen zu denen, die Google Trends verwendet 
 world <- world %>%
   mutate(region = replace(region, region=="USA", "United States")) %>%
   mutate(region = replace(region, region=="UK", "United Kingdom"))
- 
+```
 
+```{r}
 data_2004_all <- list_data[["prog_all_int"]][["interest_by_country"]] %>%
   filter(location %in% world$region, hits > 0) %>%
   mutate(region = location, 
@@ -233,7 +234,26 @@ data_2004_all <- list_data[["prog_all_int"]][["interest_by_country"]] %>%
   group_by(region) %>%
   arrange(region, desc(hits)) %>%
   slice(1)
+
+data_2017_all <- list_data[["prog_5y_int"]][["interest_by_country"]] %>%
+  filter(location %in% world$region, hits > 0) %>%
+  mutate(region = location, 
+         hits = as.numeric(str_remove_all(hits, "%"))) %>%
+  select(hits, keyword, region) %>%
+  group_by(region) %>%
+  arrange(region, desc(hits)) %>%
+  slice(1)
+
+data_2021_all <- list_data[["prog_12m_int"]][["interest_by_country"]] %>%
+  filter(location %in% world$region, hits > 0) %>%
+  mutate(region = location, 
+         hits = as.numeric(str_remove_all(hits, "%"))) %>%
+  select(hits, keyword, region) %>%
+  group_by(region) %>%
+  arrange(region, desc(hits)) %>%
+  slice(1)
 ```
+
 
 ```{r}
 show_col(pal_locuszoom("default")(5))
@@ -246,16 +266,59 @@ ggplot() +
   geom_map(data = data_2004_all, 
            map = world, 
            aes(fill = keyword, map_id = region, alpha = hits)) +
-  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2004") +
-  theme(axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        axis.title = element_blank()) +
+  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2004*") +
   theme_void() +
   labs(fill = "Suchwort",
        alpha = "Prozentzahl der 
-       Suchanfragen") +
+       Suchanfragen",
+       caption = paste0("*Regionen mit geringem Suchvolumen grau hinterlegt
+       
+       Datenquelle: Google Trends 
+          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
   scale_fill_manual(values = c("#D43F3AFF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
 
+ggsave("map_2004_all.png", path = here::here("plots"), width = 9, height = 5)
 
+ggplot() +
+  geom_map(data = world,
+           map = world,
+           aes(x = long, y = lat, map_id = region),
+           fill="#e5e5e5", color="#bababa", size=0.15) +
+  geom_map(data = data_2017_all, 
+           map = world, 
+           aes(fill = keyword, map_id = region, alpha = hits)) +
+  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2017*") +
+  theme_void() +
+  labs(fill = "Suchwort",
+       alpha = "Prozentzahl der 
+       Suchanfragen",
+       caption = paste0("*Regionen mit geringem Suchvolumen grau hinterlegt
+       
+       Datenquelle: Google Trends 
+          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
+  scale_fill_manual(values = c("#D43F3AFF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
+
+ggsave("map_2017_all.png", path = here::here("plots"), width = 9, height = 5)
+
+ggplot() +
+  geom_map(data = world,
+           map = world,
+           aes(x = long, y = lat, map_id = region),
+           fill="#e5e5e5", color="#bababa", size=0.15) +
+  geom_map(data = data_2021_all, 
+           map = world, 
+           aes(fill = keyword, map_id = region, alpha = hits)) +
+  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2021*") +
+  theme_void() +
+  labs(fill = "Suchwort",
+       alpha = "Prozentzahl der 
+       Suchanfragen",
+       caption = paste0("*Regionen mit geringem Suchvolumen grau hinterlegt
+       
+       Datenquelle: Google Trends 
+          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
+  scale_fill_manual(values = c("#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
+
+ggsave("map_2021_all.png", path = here::here("plots"), width = 9, height = 5)
 ```
 
