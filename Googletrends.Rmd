@@ -4,17 +4,17 @@ subtitle: "Programmieren für Sozialwissenschaftler_innen"
 author: "Laura Kiemes 12250912 & Felix Grams 12293142"
 date: "`r Sys.Date()`"
 output:
-  word_document:
-    toc: yes
-    toc_depth: 1
-  pdf_document:
-    toc: yes
-    toc_depth: 1
   html_document:
     toc: yes
     toc_depth: 2
     toc_float:
       collapsed: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+  word_document:
+    toc: yes
+    toc_depth: 1
 toc-title: Inhalt
 ---
 R version 4.2.0 (2022-04-22)  
@@ -44,7 +44,7 @@ Zunächst werden Variationen für die Gtrends-Abfrage angelegt.
 data("countries") # Datensatz zu Laenderbezeichnungen
 countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
 keywords_5 <- data.frame(
-  languages = c("python", "r", "java", "php", "javascript")) # Schlusselworte Sprachen
+  languages = c("python", "matlab", "java", "php", "javascript")) # Schlusselworte Sprachen
 geos <- c("DE", "") # interessierende Laender
 times <- c("2004-07-01 2022-07-01", # 18 Jahre
            "2017-07-01 2022-07-01", # 5 Jahre
@@ -254,10 +254,14 @@ data_2021_all <- list_data[["prog_12m_int"]][["interest_by_country"]] %>%
   slice(1)
 ```
 
-
 ```{r}
 show_col(pal_locuszoom("default")(5))
+colors_locuszoom <- c("#D43F3AFF", "#EEA236FF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF")
+names(colors_locuszoom) <- c("java", "javascript", "matlab", "php", "python")
+```
 
+
+```{r}
 ggplot() +
   geom_map(data = world,
            map = world,
@@ -275,7 +279,7 @@ ggplot() +
        
        Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  scale_fill_manual(values = c("#D43F3AFF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
+  scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
 
 ggsave("map_2004_all.png", path = here::here("plots"), width = 9, height = 5)
 
@@ -296,7 +300,7 @@ ggplot() +
        
        Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  scale_fill_manual(values = c("#D43F3AFF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
+  scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
 
 ggsave("map_2017_all.png", path = here::here("plots"), width = 9, height = 5)
 
@@ -317,8 +321,57 @@ ggplot() +
        
        Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  scale_fill_manual(values = c("#5CB85CFF", "#46B8DAFF", "#357EBDFF"))
+  scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
 
 ggsave("map_2021_all.png", path = here::here("plots"), width = 9, height = 5)
+```
+
+```{r}
+show_col(pal_locuszoom("default", alpha = 0.5)(5))
+colors_locuszoom_light <- c("#D43F3A7F", "#EEA2367F", "#5CB85C7F", "#46B8DA7F", "#357EBD7F")
+names(colors_locuszoom_light) <- c("Java", "Javascript", "Matlab", "PHP", "Python")
+```
+
+
+```{r python karte}
+python_data <- gtrends(keyword = "python", geo = "", time = times[3])
+php_data <- gtrends(keyword = "php", geo = "", time = times[3])
+matlab_data <- gtrends(keyword = "matlab", geo = "", time = times[3])
+java_data <- gtrends(keyword = "java", geo = "", time = times[3])
+javascript_data <- gtrends(keyword = "javascript", geo = "", time = times[3])
+
+list_google_data <- list(java_data, javascript_data, matlab_data, php_data, python_data)
+list_google_plots <- list()
+  
+for (l in 1:length(list_tweet_data)) {
+  
+list_google_plots[[l]] <- ggplot() +
+  geom_map(data = world,
+           map = world,
+           aes(x = long, y = lat, map_id = region),
+           fill="#e5e5e5", color="#bababa", size=0.15) +
+  geom_map(data = list_google_data[[l]][["interest_by_country"]] %>%
+  filter(location %in% world$region, hits > 0) %>%
+  mutate(region = location, 
+         hits = as.numeric(str_remove_all(hits, "%"))), 
+           map = world, 
+           aes(fill = hits, map_id = region)) +
+  ggtitle(paste("Suchanfragen zu", names(colors_locuszoom_light)[l], "weltweit seit Juli 2021*")) +
+  theme_void() +
+  labs(fill = "Anzahl",
+       caption = paste0("*Regionen mit geringem Suchvolumen grau hinterlegt
+       
+       Datenquelle: Google Trends 
+          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
+  theme(plot.caption = element_text(size = 6, color = "gray60")) +
+  scale_fill_continuous(high = colors_locuszoom[l], low = colors_locuszoom_light[l])
+  
+  print(last_plot())
+  
+  ggsave(filename = paste0("plot_map_", names(colors_locuszoom_light)[l], ".pdf"), 
+         plot = list_google_plots[[l]], 
+         width = 9, height = 5, 
+         path = here::here("plots"))
+}
 ```
 
