@@ -38,6 +38,16 @@ dir.create("tables")
 
 date_analysis <- ymd("2022-07-01")
 ```
+
+```{r farben locuszoom}
+show_col(pal_locuszoom("default")(5))
+colors_locuszoom <- c("#D43F3AFF", "#EEA236FF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF")
+names(colors_locuszoom) <- c("java", "javascript", "matlab", "php", "python")
+
+show_col(pal_locuszoom("default", alpha = 0.5)(5))
+colors_locuszoom_light <- c("#D43F3A7F", "#EEA2367F", "#5CB85C7F", "#46B8DA7F", "#357EBD7F")
+names(colors_locuszoom_light) <- c("Java", "Javascript", "Matlab", "PHP", "Python")
+```
 # Gtrends
 Zunächst werden Variationen für die Gtrends-Abfrage angelegt.
 ```{r Variationen definieren}
@@ -180,41 +190,6 @@ for (n in 1:length(list_data)) {
     file = here::here("tables", paste0("table_time_", n, ".csv")))
 }
 ```
-For Loop zum Erstellen von zwei Grafiken nebeneinander innerhalb einer PDF.
-```{r for loop plots 2 col}
-list_plots_2col <- list() # leeere Liste zum Fuellen mit Doppel-Plots
-
-for (i in 1:5) {
-  
-  list_plots_2col[[i]] <- list_plots[[i]] + list_plots[[i + 1]]
-  print(list_plots_2col[[i]])
-  
-  ggsave(filename = paste0("2col_plot_", i, ".pdf"), 
-         plot = list_plots_2col[[i]], 
-         width = 12, 
-         height = 6, 
-         path = here::here("plots"))
-
-}
-```
-For Loop zum Erstellen von zwei Grafiken untereinander innerhalb einer PDF.
-```{r for loop plots 1 col}
-list_plots_1col <- list() # leeere Liste zum Fuellen mit Doppel-Plots
-
-for (i in 1:5) {
-  
-  list_plots_1col[[i]] <- list_plots[[i]] / list_plots[[i + 1]]
-  print(list_plots_1col[[i]])
-  
-  ggsave(filename = paste0("1col_plot_", i, ".pdf"), 
-         plot = list_plots_1col[[i]], 
-         width = 8, 
-         height = 8, 
-         path = here::here("plots"))
-
-}
-```
-
 
 ```{r weltdaten}
 world <- map_data("world") # Weltdaten einlesen
@@ -226,7 +201,12 @@ world <- world %>%
 ```
 
 ```{r}
-data_2004_all <- list_data[["prog_all_int"]][["interest_by_country"]] %>%
+data_time_names <- c(2, 4, 6)
+list_data_time_names <- list()
+
+for (d in 1:length(data_time_names)) {
+
+  list_data_time_names[[d]] <- list_data[[data_time_names[d]]][["interest_by_country"]] %>%
   filter(location %in% world$region, hits > 0) %>%
   mutate(region = location, 
          hits = as.numeric(str_remove_all(hits, "%"))) %>%
@@ -234,40 +214,23 @@ data_2004_all <- list_data[["prog_all_int"]][["interest_by_country"]] %>%
   group_by(region) %>%
   arrange(region, desc(hits)) %>%
   slice(1)
-
-data_2017_all <- list_data[["prog_5y_int"]][["interest_by_country"]] %>%
-  filter(location %in% world$region, hits > 0) %>%
-  mutate(region = location, 
-         hits = as.numeric(str_remove_all(hits, "%"))) %>%
-  select(hits, keyword, region) %>%
-  group_by(region) %>%
-  arrange(region, desc(hits)) %>%
-  slice(1)
-
-data_2021_all <- list_data[["prog_12m_int"]][["interest_by_country"]] %>%
-  filter(location %in% world$region, hits > 0) %>%
-  mutate(region = location, 
-         hits = as.numeric(str_remove_all(hits, "%"))) %>%
-  select(hits, keyword, region) %>%
-  group_by(region) %>%
-  arrange(region, desc(hits)) %>%
-  slice(1)
-```
-
-```{r}
-show_col(pal_locuszoom("default")(5))
-colors_locuszoom <- c("#D43F3AFF", "#EEA236FF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF")
-names(colors_locuszoom) <- c("java", "javascript", "matlab", "php", "python")
+  
+}
 ```
 
 
 ```{r}
-ggplot() +
+list_plot_time_names <- list()
+names(times) <- c("18", "5", "1")
+
+for (e in 1:length(list_data_time_names)) {
+  
+list_plot_time_names[[e]] <- ggplot() +
   geom_map(data = world,
            map = world,
            aes(x = long, y = lat, map_id = region),
            fill="#e5e5e5", color="#bababa", size=0.15) +
-  geom_map(data = data_2004_all, 
+  geom_map(data = list_data_time_names[[e]], 
            map = world, 
            aes(fill = keyword, map_id = region, alpha = hits)) +
   ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2004*") +
@@ -280,60 +243,17 @@ ggplot() +
        Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
   scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
-
-ggsave("map_2004_all.png", path = here::here("plots"), width = 9, height = 5)
-
-ggplot() +
-  geom_map(data = world,
-           map = world,
-           aes(x = long, y = lat, map_id = region),
-           fill="#e5e5e5", color="#bababa", size=0.15) +
-  geom_map(data = data_2017_all, 
-           map = world, 
-           aes(fill = keyword, map_id = region, alpha = hits)) +
-  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2017*") +
-  theme_void() +
-  labs(fill = "Suchwort",
-       alpha = "Prozentzahl der 
-       Suchanfragen",
-       caption = paste0("*Regionen mit geringem Suchvolumen grau hinterlegt
-       
-       Datenquelle: Google Trends 
-          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
-
-ggsave("map_2017_all.png", path = here::here("plots"), width = 9, height = 5)
-
-ggplot() +
-  geom_map(data = world,
-           map = world,
-           aes(x = long, y = lat, map_id = region),
-           fill="#e5e5e5", color="#bababa", size=0.15) +
-  geom_map(data = data_2021_all, 
-           map = world, 
-           aes(fill = keyword, map_id = region, alpha = hits)) +
-  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2021*") +
-  theme_void() +
-  labs(fill = "Suchwort",
-       alpha = "Prozentzahl der 
-       Suchanfragen",
-       caption = paste0("*Regionen mit geringem Suchvolumen grau hinterlegt
-       
-       Datenquelle: Google Trends 
-          (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
-
-ggsave("map_2021_all.png", path = here::here("plots"), width = 9, height = 5)
+  
+  print(last_plot())
+  
+  ggsave(filename = paste0("plot_map_all_", names(times)[[e]], ".pdf"), 
+         plot = list_plot_time_names[[e]], 
+         width = 9, height = 5, 
+         path = here::here("plots"))
+}
 ```
 
-```{r}
-show_col(pal_locuszoom("default", alpha = 0.5)(5))
-colors_locuszoom_light <- c("#D43F3A7F", "#EEA2367F", "#5CB85C7F", "#46B8DA7F", "#357EBD7F")
-names(colors_locuszoom_light) <- c("Java", "Javascript", "Matlab", "PHP", "Python")
-```
-
-
-```{r python karte}
+```{r daten fuer karten nach einzelnen suchbegriffen}
 python_data <- gtrends(keyword = "python", geo = "", time = times[3])
 php_data <- gtrends(keyword = "php", geo = "", time = times[3])
 matlab_data <- gtrends(keyword = "matlab", geo = "", time = times[3])
@@ -342,7 +262,9 @@ javascript_data <- gtrends(keyword = "javascript", geo = "", time = times[3])
 
 list_google_data <- list(java_data, javascript_data, matlab_data, php_data, python_data)
 list_google_plots <- list()
-  
+```
+
+```{r karten nach einzelnen suchbegriffen}
 for (l in 1:length(list_tweet_data)) {
   
 list_google_plots[[l]] <- ggplot() +
