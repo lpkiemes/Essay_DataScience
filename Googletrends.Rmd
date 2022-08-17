@@ -292,8 +292,11 @@ list_google_plots[[l]] <- ggplot() +
          path = here::here("plots"))
 }
 ```
-
 ```{r}
-
+list(java = list_google_data[[1]][["related_topics"]]$value,
+     javascript = list_google_data[[2]][["related_topics"]]$value,
+     matlab = list_google_data[[3]][["related_topics"]]$value,
+     php = list_google_data[[4]][["related_topics"]]$value,
+     python = list_google_data[[5]][["related_topics"]]$value)
 ```
 
