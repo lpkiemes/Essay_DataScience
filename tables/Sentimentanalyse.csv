@@ -1,6 +1,6 @@
 code,mean_polarity,mean_subjectivity
-java,0.1313,0.5203
+java,0.1264,0.5011
 javascript,-0.0036,0.3293
-matlab,0.0861,0.3597
-php,0.0832,0.2885
+matlab,0.0512,0.2886
 python,0.0242,0.3162
+typescript,0.0713,0.4538
