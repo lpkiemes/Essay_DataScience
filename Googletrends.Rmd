@@ -4,17 +4,17 @@ subtitle: "Programmieren für Sozialwissenschaftler_innen"
 author: "Laura Kiemes 12250912 & Felix Grams 12293142"
 date: "`r Sys.Date()`"
 output:
+  word_document:
+    toc: yes
+    toc_depth: 1
+  pdf_document:
+    toc: yes
+    toc_depth: 1
   html_document:
     toc: yes
     toc_depth: 2
     toc_float:
       collapsed: yes
-  pdf_document:
-    toc: yes
-    toc_depth: 1
-  word_document:
-    toc: yes
-    toc_depth: 1
 toc-title: Inhalt
 ---
 R version 4.2.0 (2022-04-22)  
@@ -25,59 +25,60 @@ Running under: macOS Monterey 12.4
 Zunächst wird das Pacman Paket installiert, falls dies noch nicht installiert wurde. Als nächstes wird dieses zusätzlich geladen. Über Pacman werden anschließend alle verwendeten Pakete installiert, falls dies noch nicht geschehen ist und ansonsten geladen.  
 Die Ordner Plots und Tables werden erstellt. Das Referenzdatum wird festgelegt.
 ```{r packages verwenden und ordner erstellen, message=FALSE, warning=FALSE}
-here::i_am("Googletrends.Rmd")
+here::i_am("Googletrends.Rmd") # Dateibezug
 
 # Falls pacman nicht installiert ist wird es installiert und geladen
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 
 # Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
-pacman::p_load(tidyverse, gtrendsR, ggsci, maps, rtweet, patchwork, lubridate, scales) 
+pacman::p_load(tidyverse, gtrendsR, ggsci, lubridate, scales) 
 
-dir.create("plots")
-dir.create("tables")
+dir.create("plots") # Ordner erstellen fuer Plots 
+dir.create("tables") # Ordner erstellen fuer Tabellen
 
-date_analysis <- ymd("2022-07-01")
+date_analysis <- ymd("2022-07-01") # Referenzdatum
 ```
 
-```{r farben locuszoom}
+```{r farben locuszoom fuer visualisierungen}
 show_col(pal_locuszoom("default")(5))
 colors_locuszoom <- c("#D43F3AFF", "#EEA236FF", "#5CB85CFF", "#46B8DAFF", "#357EBDFF")
-names(colors_locuszoom) <- c("java", "javascript", "matlab", "php", "python")
+names(colors_locuszoom) <- c("java", "javascript", "matlab", "typescript", "python")
 
 show_col(pal_locuszoom("default", alpha = 0.5)(5))
 colors_locuszoom_light <- c("#D43F3A7F", "#EEA2367F", "#5CB85C7F", "#46B8DA7F", "#357EBD7F")
-names(colors_locuszoom_light) <- c("Java", "Javascript", "Matlab", "PHP", "Python")
+names(colors_locuszoom_light) <- c("Java", "Javascript", "Matlab", "Typescript", "Python")
 ```
 # Gtrends
 Zunächst werden Variationen für die Gtrends-Abfrage angelegt.
-```{r Variationen definieren}
+```{r Variationen fuer loop definieren}
 data("countries") # Datensatz zu Laenderbezeichnungen
 countries$country_code[which(countries$name == "GERMANY")] # Abkuerzung fuer Deutschland
-keywords_5 <- data.frame(
-  languages = c("python", "matlab", "java", "php", "javascript")) # Schlusselworte Sprachen
+keywords <- data.frame(
+  languages = c("python", "matlab", "java", "typescript", "javascript")) # Schlusselworte Sprachen
 geos <- c("DE", "") # interessierende Laender
 times <- c("2004-07-01 2022-07-01", # 18 Jahre
            "2017-07-01 2022-07-01", # 5 Jahre
            "2021-07-01 2022-07-01") # 1 Jahr
+names(times) <- c("2004", "2017", "2021") # Namen fuer Zeitspannen
 list_google_data <- list() # leere Liste zum Fuellen mit Datensaetzen
-list_plots <- list() # leeere Liste zum Fuellen mit Plots
+list_google_plots <- list() # leeere Liste zum Fuellen mit Plots
 ```
 Dann iterieren wir und speichern die erzeugten Objekte als csv Dateien und in einem Listenobjekt.
 ```{r for loop Daten}
 i <- 0 # Index zum Mitlaufen
 
-for (k in keywords_5) {
+for (k in keywords) {
   for (t in times) {
     for (g in geos) {
       
       i <- i + 1 # Indexzaehler
-      print(paste(i, t, g, k)) # Iteration anzeigen
+      print(paste(i, t, g)) # Iteration anzeigen
       
       list_google_data[[i]] <- gtrends(
-        keyword = k,
-        geo = g,
-        time = t,
-        gprop = "web",
+        keyword = k, # Schluesselworte
+        geo = g, # Geodaten
+        time = t, # Zeitspannen
+        gprop = "web", # Websuchen
         category = 0,
         hl = "en-US",
         compared_breakdown = TRUE,
@@ -86,26 +87,33 @@ for (k in keywords_5) {
         tz = 0,
         onlyInterest = FALSE
       )
+      
+      list_google_data[[i]][["interest_over_time"]] <- list_google_data[[i]][["interest_over_time"]] %>% 
+        mutate(hits = as.numeric(str_remove_all(hits, "<"))) # Hits als numerische ohne Kleinerzeichen
 
     }
   }
 }
 
-names(list_google_data) <- c("prog_all_de", "prog_all_int", 
-                      "prog_5y_de", "prog_5y_int", 
-                      "prog_12_de", "prog_12m_int")
+names_data <- c("2004_de", "2004_int", 
+                "2017_de", "2017_int", 
+                "2021_de", "2021_int") # Namen 
+
+names(list_google_data) <- names_data # Namen fuer die Daten
 ```
+
+
 # Plots
 Anschließend iterieren wir über die erzeugten Listen mit den Datensätzen und erstellen jeweils einen Plot pro Datensatz.
 ```{r for loop Plots}
 for (i in 1:length(list_google_data)) {
 
-      list_plots[[i]] <- ggplot(
+      list_google_plots[[i]] <- ggplot(
         data = list_google_data[[i]][["interest_over_time"]],
-        aes(x = as.Date(date),
-            y = hits,
-            group = factor(keyword),
-            color = keyword)) +
+        aes(x = as.Date(date), # als Datum
+            y = hits, # Anfragen
+            group = factor(keyword), # faktorisierte Schluesselworte als Gruppe
+            color = keyword)) + # Schluesselworte als Farbe
         geom_line(size = 1) +
         labs(
           x = "Zeit",
@@ -114,7 +122,7 @@ for (i in 1:length(list_google_data)) {
           caption = paste0("Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")
           ) +
-        theme_bw() +
+        theme_bw() + # Schwarz-weiss Optik
         theme(
           axis.text.x = element_text(angle = 35, hjust = 1),
           plot.caption = element_text(size = 6, color = "gray60"),
@@ -125,15 +133,13 @@ for (i in 1:length(list_google_data)) {
                      date_breaks = "2 years",
                      date_minor_breaks = "1 year") +
         scale_y_continuous(labels = scales::percent_format(scale = 1)) +
-        ggsci::scale_colour_locuszoom()
+        ggsci::scale_colour_locuszoom() # Farben
       
       print(last_plot()) # anzeigen lassen
       
 }
 
-names(list_plots) <- c("prog_all_de", "prog_all_int", 
-                      "prog_5y_de", "prog_5y_int", 
-                      "prog_12_de", "prog_12m_int")
+names(list_google_plots) <- names_data # Namen fuer die Plots
 ```
 Für die erstellten Plots fügen wir als nächstes jeweilis Titel und Untertitel als Vektor bereit und ordnen diese innerhalb einer Schleife basierend auf den Index zu. 
 ```{r for loop plot names}
@@ -159,31 +165,25 @@ subtitles <- c(
 )
 
 for (n in 1:length(list_google_data)) {
-  list_plots[[n]] <- list_plots[[n]] + labs(title = titles[[n]], subtitle = subtitles[[n]])
+  list_google_plots[[n]] <- list_google_plots[[n]] + labs(title = titles[[n]], subtitle = subtitles[[n]])
   
   if (n %in% indice_5) { # falls innerhalb der letzten 5 Jahre
-    list_plots[[n]] <- list_plots[[n]] + scale_x_date(date_labels = "%Y",
+    list_google_plots[[n]] <- list_google_plots[[n]] + scale_x_date(date_labels = "%Y",
                                                       date_breaks = "1 years",
                                                       date_minor_breaks = "1 months")
   } else if (n %in% indice_12) { # falls innerhalb der letzten 12 monate
-    list_plots[[n]] <- list_plots[[n]] + scale_x_date(date_labels = "%B %Y",
+    list_google_plots[[n]] <- list_google_plots[[n]] + scale_x_date(date_labels = "%B %Y",
                                                       date_breaks = "1 months")
   }
 
-  ggsave(filename = paste0("plot_", n, ".png"), 
-         plot = list_plots[[n]], 
+  ggsave(filename = paste0("plot_line_", names_data[[n]], ".png"), 
+         plot = list_google_plots[[n]], 
          width = 9, height = 5, 
-         path = here::here("plots"))
-  
-  ggsave(filename = paste0("small_plot_", n, ".png"), 
-         plot = list_plots[[n]], 
-         width = 6, 
-         height = 6, 
-         path = here::here("plots"))
+         path = here::here("plots")) # sichern als png
 
   write_csv(as.data.frame(
     list_google_data[[1]][["interest_over_time"]]), 
-    file = here::here("tables", paste0("table_time_", n, ".csv")))
+    file = here::here("tables", paste0("over_time_", names_data[[n]], ".csv"))) # als csv
 }
 ```
 
@@ -192,17 +192,19 @@ world <- map_data("world") # Weltdaten einlesen
 
 # aendert die Regionnamen zu denen, die Google Trends verwendet 
 world <- world %>%
-  mutate(region = replace(region, region=="USA", "United States")) %>%
-  mutate(region = replace(region, region=="UK", "United Kingdom"))
+  mutate(region = replace(region, region == "USA", "United States")) %>%
+  mutate(region = replace(region, region == "UK", "United Kingdom"))
 ```
 
-```{r}
+```{r Kartendaten}
 data_time_names <- c(2, 4, 6)
-list_data_time_names <- list()
+list_google_data_maps <- list()
+
+# Laender mit Aufrufen und je einer Programmiersprache
 
 for (d in 1:length(data_time_names)) {
 
-  list_data_time_names[[d]] <- list_data[[data_time_names[d]]][["interest_by_country"]] %>%
+  list_google_data_maps[[d]] <- list_google_data[[data_time_names[d]]][["interest_by_country"]] %>%
   filter(location %in% world$region, hits > 0) %>%
   mutate(region = location, 
          hits = as.numeric(str_remove_all(hits, "%"))) %>%
@@ -215,21 +217,20 @@ for (d in 1:length(data_time_names)) {
 ```
 
 
-```{r}
-list_plot_time_names <- list()
-names(times) <- c("18", "5", "1")
+```{r Karten nach fuenf Sprachen}
+list_google_plots_maps <- list()
 
-for (e in 1:length(list_data_time_names)) {
+for (e in 1:length(list_google_data_maps)) {
   
-list_plot_time_names[[e]] <- ggplot() +
+list_google_plots_maps[[e]] <- ggplot() +
   geom_map(data = world,
            map = world,
            aes(x = long, y = lat, map_id = region),
            fill="#e5e5e5", color="#bababa", size=0.15) +
-  geom_map(data = list_data_time_names[[e]], 
+  geom_map(data = list_google_data_maps[[e]], 
            map = world, 
            aes(fill = keyword, map_id = region, alpha = hits)) +
-  ggtitle("Suchanfragen zu Programmiersprachen weltweit seit Juli 2004*") +
+  ggtitle(paste0("Suchanfragen weltweit seit Juli ", names(times)[e],"*")) +
   theme_void() +
   labs(fill = "Suchwort",
        alpha = "Prozentzahl der 
@@ -238,12 +239,14 @@ list_plot_time_names[[e]] <- ggplot() +
        
        Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  scale_fill_manual(values = c(colors_locuszoom["java"], colors_locuszoom["php"], colors_locuszoom["python"]))
+  scale_fill_manual(values = c(colors_locuszoom["java"], 
+                               colors_locuszoom["typescript"], 
+                               colors_locuszoom["python"]))
   
   print(last_plot())
   
-  ggsave(filename = paste0("plot_map_all_", names(times)[[e]], ".png"), 
-         plot = list_plot_time_names[[e]], 
+  ggsave(filename = paste0("plot_map_", names(times)[[e]], ".png"), 
+         plot = list_google_plots_maps[[e]], 
          width = 9, height = 5, 
          path = here::here("plots"))
 }
@@ -251,24 +254,25 @@ list_plot_time_names[[e]] <- ggplot() +
 
 ```{r daten fuer karten nach einzelnen suchbegriffen}
 python_data <- gtrends(keyword = "python", geo = "", time = times[3])
-php_data <- gtrends(keyword = "php", geo = "", time = times[3])
+typescript_data <- gtrends(keyword = "typescript", geo = "", time = times[3])
 matlab_data <- gtrends(keyword = "matlab", geo = "", time = times[3])
 java_data <- gtrends(keyword = "java", geo = "", time = times[3])
 javascript_data <- gtrends(keyword = "javascript", geo = "", time = times[3])
 
-list_google_data <- list(java_data, javascript_data, matlab_data, php_data, python_data)
-list_google_plots <- list()
+list_google_data_sep <- list(java_data, javascript_data, matlab_data, typescript_data, python_data)
+list_google_plots_sep <- list()
 ```
 
 ```{r karten nach einzelnen suchbegriffen}
-for (l in 1:length(list_tweet_data)) {
+
+for (l in 1:length(keywords$languages)) {
   
-list_google_plots[[l]] <- ggplot() +
+list_google_plots_sep[[l]] <- ggplot() +
   geom_map(data = world,
            map = world,
            aes(x = long, y = lat, map_id = region),
            fill="#e5e5e5", color="#bababa", size=0.15) +
-  geom_map(data = list_google_data[[l]][["interest_by_country"]] %>%
+  geom_map(data = list_google_data_sep[[l]][["interest_by_country"]] %>%
   filter(location %in% world$region, hits > 0) %>%
   mutate(region = location, 
          hits = as.numeric(str_remove_all(hits, "%"))), 
@@ -286,17 +290,55 @@ list_google_plots[[l]] <- ggplot() +
   
   print(last_plot())
   
-  ggsave(filename = paste0("plot_map_", names(colors_locuszoom_light)[l], ".png"), 
-         plot = list_google_plots[[l]], 
+  ggsave(filename = paste0("plot_map_2021_", names(colors_locuszoom_light)[l], ".png"), 
+         plot = list_google_plots_sep[[l]], 
          width = 9, height = 5, 
-         path = here::here("plots"))
+         path = here::here("plots")) # als png
 }
 ```
-```{r}
-list(java = list_google_data[[1]][["related_topics"]]$value,
-     javascript = list_google_data[[2]][["related_topics"]]$value,
-     matlab = list_google_data[[3]][["related_topics"]]$value,
-     php = list_google_data[[4]][["related_topics"]]$value,
-     python = list_google_data[[5]][["related_topics"]]$value)
+
+```{r verwandte themen}
+list_related_topics <- list(java = java_data[["related_topics"]]$value,
+     javascript = javascript_data[["related_topics"]]$value,
+     matlab = matlab_data[["related_topics"]]$value,
+     typescript = typescript_data[["related_topics"]]$value,
+     python = python_data[["related_topics"]]$value)
+
+dataframe_related_topics <- data_frame(java = rep(NA, 36),
+                                       javascript = rep(NA, 36),
+                                       matlab = rep(NA, 36),
+                                       typescript = rep(NA, 36),
+                                       python = rep(NA, 36))
+
+dataframe_related_topics$java <- list_related_topics$java
+dataframe_related_topics$javascript[1:29] <- list_related_topics$javascript
+dataframe_related_topics$matlab[1:18] <- list_related_topics$matlab
+dataframe_related_topics$typescript[1:31] <- list_related_topics$typescript
+dataframe_related_topics$python[1:29] <- list_related_topics$python
+
+write_csv(dataframe_related_topics, 
+    file = here::here("tables", "related_topics.csv"))
 ```
 
+```{r aehnliche suchen}
+list_related_queries <- list(java = java_data[["related_queries"]]$value,
+     javascript = javascript_data[["related_queries"]]$value,
+     matlab = matlab_data[["related_queries"]]$value,
+     typescript = typescript_data[["related_queries"]]$value,
+     python = python_data[["related_queries"]]$value)
+
+dataframe_related_queries <- data_frame(java = rep(NA, 50),
+                                       javascript = rep(NA, 50),
+                                       matlab = rep(NA, 50),
+                                       typescript = rep(NA, 50),
+                                       python = rep(NA, 50))
+
+dataframe_related_queries$java <- list_related_queries$java
+dataframe_related_queries$javascript <- list_related_queries$javascript
+dataframe_related_queries$matlab <- list_related_queries$matlab
+dataframe_related_queries$typescript <- list_related_queries$typescript
+dataframe_related_queries$python <- list_related_queries$python
+
+write_csv(dataframe_related_queries, 
+    file = here::here("tables", "related_queries.csv"))
+```
