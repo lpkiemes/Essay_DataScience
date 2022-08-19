@@ -39,4 +39,5 @@ vignettes/*.pdf
 .Renviron
 
 .DS_Store
-.Rproj
+
+Essay_DataScience.Rproj
