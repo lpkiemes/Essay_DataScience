@@ -1,0 +1,85 @@
+---
+title: "Data Science, Computational Social Science, Big Data:" 
+subtitle: "Programmieren für Sozialwissenschaftler_innen"
+author: "Laura Kiemes 12250912 & Felix Grams 12293142"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+  word_document:
+    toc: yes
+    toc_depth: 1
+toc-title: Inhalt
+---
+R version 4.2.0 (2022-04-22)  
+Platform: x86_64-apple-darwin17.0 (64-bit)  
+Running under: macOS Monterey 12.4
+
+```{r packages}
+here::i_am("TwitterAPI.Rmd")
+
+# Falls pacman nicht installiert ist wird es installiert und geladen
+if (!require("pacman")) install.packages("pacman"); library(pacman)
+
+# Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
+pacman::p_load(rtweet, tidyverse, stringr, cld2, cld3) 
+```
+
+```{r}
+tweets_python <- read.csv2(here::here("data", "tweet_sentiment_python.csv"), sep = ";")
+tweets_python <- tweets_python %>% mutate(code = "python")
+
+tweets_java <- read.csv2(here::here("data", "tweet_sentiment_java.csv"), sep = ";")
+tweets_java <- tweets_java %>% mutate(code = "java")
+
+tweets_javascript <- read.csv2(here::here("data", "tweet_sentiment_javascript.csv"), sep = ";")
+tweets_javascript <- tweets_javascript %>% mutate(code = "javascript")
+
+tweets_matlab <- read.csv2(here::here("data", "tweet_sentiment_matlab.csv"), sep = ";")
+tweets_matlab <- tweets_matlab %>% mutate(code = "matlab")
+
+tweets_typescript <- read.csv2(here::here("data", "tweet_sentiment_typescript.csv"), sep = ";")
+tweets_typescript <- tweets_typescript %>% mutate(code = "typescript")
+```
+
+```{r}
+tweets <- tweets_java %>%
+  full_join(tweets_python) %>%
+  full_join(tweets_matlab) %>%
+  full_join(tweets_javascript) %>%
+  full_join(tweets_typescript)
+
+tweets <- tweets %>%
+  mutate(polarity = str_remove_all(sentiment, "[:alpha:]")) %>%
+  mutate(polarity = str_remove_all(polarity, "\\(")) %>%
+  mutate(polarity = str_remove_all(polarity, "\\=")) %>%
+  mutate(polarity = str_remove_all(polarity, "\\)")) %>%
+  mutate(polarity = str_remove_all(polarity, "[:blank:]")) %>%
+  separate(polarity, c('polarity', 'subjectivity'), sep = ",") %>%
+  mutate(polarity = as.numeric(polarity),
+         subjectivity = as.numeric(subjectivity)) %>%
+  select(-sentiment, -username, -name) %>%
+  mutate(cld2 = cld2::detect_language(text = text, plain_text = FALSE), 
+         cld3 = cld3::detect_language(text = text)) 
+
+tweets_en <- tweets %>% filter(cld2 == "en" & cld3 == "en")
+```
+
+```{r}
+tweets_en_means <- tweets_en %>%
+  group_by(code) %>%
+  summarise(mean_polarity = round(mean(polarity), digits = 4),
+            mean_subjectivity = round(mean(subjectivity), digits = 4))
+
+round(mean(tweets_en_means$mean_polarity), 4)
+round(mean(tweets_en_means$mean_subjectivity), 4)
+
+write_csv(tweets_en_means, file = here::here("tables", "Sentimentanalyse.csv"))
+```
+
