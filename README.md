@@ -4,6 +4,5 @@ Das ist ein Projekt zur Anfertigen eines Werkstücks im Modul Soziologische Vert
   - Googletrends.Rmd
 2. Twitter
   - Twitter.py
-  - tweet_sentiment_python.csv
-  - TwitterAPI.Rmd
+  - Twitter.Rmd
   
