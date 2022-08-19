@@ -3,6 +3,6 @@ Das ist ein Projekt zur Anfertigen eines Werkstücks im Modul Soziologische Vert
 1. Google Trends
   - Googletrends.Rmd
 2. Twitter
-  - Twitter.py
-  - Twitter.Rmd
+  - Twitter_01.py
+  - Twitter_02.Rmd
   
