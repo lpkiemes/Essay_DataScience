@@ -240,7 +240,7 @@ for (e in 1:length(list_google_data_maps)) {
            fill="#e5e5e5", color="#bababa", size=0.15) +
   geom_map(data = list_google_data_maps[[e]], 
            map = world, 
-           aes(fill = keyword, map_id = region, alpha = hits)) +
+           aes(fill = factor(keyword), map_id = factor(region), alpha = as.integer(hits))) +
   ggtitle(paste0("Suchanfragen weltweit seit Juli ", names(times)[e],"*")) +
   theme_void() +
   labs(fill = "Suchwort",
@@ -252,7 +252,8 @@ for (e in 1:length(list_google_data_maps)) {
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
   scale_fill_manual(values = c(colors_locuszoom["java"], 
                                colors_locuszoom["typescript"], 
-                               colors_locuszoom["python"]))
+                               colors_locuszoom["python"])) +
+  theme(plot.caption = element_text(size = 10, color = "gray60"))
   
   print(list_google_plots_maps[[e]])
   
@@ -262,6 +263,7 @@ for (e in 1:length(list_google_data_maps)) {
          path = here::here("plots"))
 }
 ```
+
 
 # Karten pro Programmiersprache
 
@@ -299,7 +301,7 @@ for (l in 1:length(keywords$languages)) {
        
        Datenquelle: Google Trends 
           (https://www.google.com/trends, abgefragt am ", date_analysis, ").")) +
-  theme(plot.caption = element_text(size = 6, color = "gray60")) +
+  theme(plot.caption = element_text(size = 10, color = "gray60")) +
   scale_fill_continuous(high = colors_locuszoom[l], low = colors_locuszoom_light[l])
   
   print(list_google_plots_sep[[l]])
