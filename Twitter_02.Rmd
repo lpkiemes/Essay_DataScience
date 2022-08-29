@@ -1,20 +1,19 @@
 ---
-title: "Data Science, Computational Social Science, Big Data:" 
-subtitle: "Programmieren für Sozialwissenschaftler_innen"
+title: "Data Science, Computational Social Science, Big Data: Programmieren für Sozialwissenschaftler_innen" 
+subtitle: "Twitter"
 author: "Laura Kiemes 12250912 & Felix Grams 12293142"
 date: "`r Sys.Date()`"
 output:
+  word_document:
+    toc: no
+  pdf_document:
+    toc: yes
+    toc_depth: 1
   html_document:
     toc: yes
     toc_depth: 2
     toc_float:
       collapsed: yes
-  pdf_document:
-    toc: yes
-    toc_depth: 1
-  word_document:
-    toc: yes
-    toc_depth: 1
 toc-title: Inhalt
 ---
 R version 4.2.0 (2022-04-22)  
@@ -22,30 +21,37 @@ Platform: x86_64-apple-darwin17.0 (64-bit)
 Running under: macOS Monterey 12.4
 
 ```{r packages}
-here::i_am("TwitterAPI.Rmd")
+here::i_am("Twitter_02.Rmd") # Dateibezug
 
 # Falls pacman nicht installiert ist wird es installiert und geladen
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 
 # Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
-pacman::p_load(rtweet, tidyverse, stringr, cld2, cld3) 
+pacman::p_load(tidyverse, stringr, cld2, cld3) 
+
+date_analysis <- ymd("2022-07-01") # Referenzdatum
 ```
 
 ```{r}
 tweets_python <- read.csv2(here::here("data", "tweet_sentiment_python.csv"), sep = ";")
-tweets_python <- tweets_python %>% mutate(code = "python")
+tweets_python <- tweets_python %>% mutate(code = "python") # id
+head(tweets_python$text, 1) # erster tweet zu python
 
 tweets_java <- read.csv2(here::here("data", "tweet_sentiment_java.csv"), sep = ";")
-tweets_java <- tweets_java %>% mutate(code = "java")
+tweets_java <- tweets_java %>% mutate(code = "java") # id
+head(tweets_java$text, 1) # erster tweet
 
 tweets_javascript <- read.csv2(here::here("data", "tweet_sentiment_javascript.csv"), sep = ";")
-tweets_javascript <- tweets_javascript %>% mutate(code = "javascript")
+tweets_javascript <- tweets_javascript %>% mutate(code = "javascript") # id
+head(tweets_javascript$text, 1) # erster tweet
 
 tweets_matlab <- read.csv2(here::here("data", "tweet_sentiment_matlab.csv"), sep = ";")
-tweets_matlab <- tweets_matlab %>% mutate(code = "matlab")
+tweets_matlab <- tweets_matlab %>% mutate(code = "matlab") # id
+head(tweets_matlab$text, 1) # erster tweet
 
 tweets_typescript <- read.csv2(here::here("data", "tweet_sentiment_typescript.csv"), sep = ";")
-tweets_typescript <- tweets_typescript %>% mutate(code = "typescript")
+tweets_typescript <- tweets_typescript %>% mutate(code = "typescript") # id
+head(tweets_typescript$text, 1) # erster tweet
 ```
 
 ```{r}
@@ -53,33 +59,106 @@ tweets <- tweets_java %>%
   full_join(tweets_python) %>%
   full_join(tweets_matlab) %>%
   full_join(tweets_javascript) %>%
-  full_join(tweets_typescript)
+  full_join(tweets_typescript) # Datensaetze zusammenfuehren
 
-tweets <- tweets %>%
-  mutate(polarity = str_remove_all(sentiment, "[:alpha:]")) %>%
+tweets <- tweets %>% # Sentiment und Polaritaet als Spalten
+  mutate(polarity = str_remove_all(sentiment, "[:alpha:]")) %>% 
   mutate(polarity = str_remove_all(polarity, "\\(")) %>%
   mutate(polarity = str_remove_all(polarity, "\\=")) %>%
   mutate(polarity = str_remove_all(polarity, "\\)")) %>%
   mutate(polarity = str_remove_all(polarity, "[:blank:]")) %>%
   separate(polarity, c('polarity', 'subjectivity'), sep = ",") %>%
-  mutate(polarity = as.numeric(polarity),
-         subjectivity = as.numeric(subjectivity)) %>%
+  mutate(polarity = as.numeric(polarity), # numerisch
+         subjectivity = as.numeric(subjectivity)) %>% # numerisch
   select(-sentiment, -username, -name) %>%
-  mutate(cld2 = cld2::detect_language(text = text, plain_text = FALSE), 
+  mutate(cld2 = cld2::detect_language(text = text, plain_text = FALSE), # Sprache feststellen x2
          cld3 = cld3::detect_language(text = text)) 
 
-tweets_en <- tweets %>% filter(cld2 == "en" & cld3 == "en")
+tweets_en <- tweets %>% filter(cld2 == "en" & cld3 == "en") # nur englische Tweets, doppelt geprueft
+str(tweets_en)
 ```
 
 ```{r}
-tweets_en_means <- tweets_en %>%
+tweets_en_means <- tweets_en %>% # zusammenfassen
   group_by(code) %>%
   summarise(mean_polarity = round(mean(polarity), digits = 4),
-            mean_subjectivity = round(mean(subjectivity), digits = 4))
+            mean_subjectivity = round(mean(subjectivity), digits = 4),
+            median_polarity = round(median(polarity), digits = 4),
+            median_subjectivity = round(median(subjectivity), digits = 4),
+            sd_polarity = round(sd(polarity), digits = 4),
+            sd_subjectivity = round(sd(subjectivity), digits = 4))
 
-round(mean(tweets_en_means$mean_polarity), 4)
-round(mean(tweets_en_means$mean_subjectivity), 4)
+tweets_en_means <- rbind(tweets_en_means, tweets_en_means %>%
+    summarise(code = NA,
+              mean_polarity = mean(mean_polarity),
+              mean_subjectivity = mean(mean_subjectivity),
+              median_polarity = mean(median_polarity),
+              median_subjectivity = mean(median_subjectivity),
+              sd_polarity = mean(sd_polarity),
+              sd_subjectivity = mean(sd_subjectivity)))
 
-write_csv(tweets_en_means, file = here::here("tables", "Sentimentanalyse.csv"))
+tweets_en_means[6, 1] <- "mean" # Name
+
+tweets_en_means # anzeigen
+
+write_csv(tweets_en_means, file = here::here("tables", "Sentimentanalyse.csv")) # als csv
+```
+
+```{r sentiment plot polarity}
+plot_sentiment_polarity <- ggplot(tweets_en, aes(x = polarity, fill = code, color = code)) +
+  geom_histogram(binwidth = .2) +
+  labs(
+    title = "Sentimentanalyse: Polarität",
+    subtitle = "zu Tweets zu Programmmiersprachen",
+    caption = paste0("Datenquelle: Twitter
+          (https://developer.twitter.com/en/docs/twitter-api, abgefragt am ", date_analysis, ")."),
+    y = "Anzahl",
+    x = "Polarität"
+    ) +
+  scale_x_continuous(breaks = c(-1, -.5, 0, .5, 1), 
+                     labels = c("-1", "-0,5", "0", "0,5", "1"),
+                     limits = c(-1, 1)) +
+  theme_bw() +
+  ggsci::scale_fill_locuszoom(alpha = .5) +
+  ggsci::scale_color_locuszoom() +
+  facet_wrap(~ code) +
+  theme(plot.caption = element_text(size = 10, color = "gray60"),
+        legend.position = "none")
+
+print(plot_sentiment_polarity)
+
+ggsave(filename = "sentiment_polarity.png", 
+       plot = plot_sentiment_polarity, 
+       width = 9, height = 5, 
+       path = here::here("plots")) # als png
+```
+
+
+```{r sentiment subjectivity plot}
+plot_sentiment_subjectivity <- ggplot(tweets_en, aes(x = subjectivity, fill = code, color = code)) +
+  geom_histogram(binwidth = .1) +
+  labs(
+    title = "Sentimentanalyse: Subjektivität",
+    subtitle = "zu Tweets zu Programmmiersprachen",
+    caption = paste0("Datenquelle: Twitter
+          (https://developer.twitter.com/en/docs/twitter-api, abgefragt am ", date_analysis, ")."),
+    y = "Anzahl",
+    x = "Subjektivität"
+    ) +
+  scale_x_continuous(labels = c("0", "0,25", "0,5", "0,75", "1")) +
+  scale_y_continuous(breaks = c(0, 5, 10)) +
+  theme_bw() +
+  facet_wrap(~ code) +
+  ggsci::scale_fill_locuszoom(alpha = .5) +
+  ggsci::scale_color_locuszoom() +
+  theme(plot.caption = element_text(size = 10, color = "gray60"),
+        legend.position = "none")
+
+print(plot_sentiment_subjectivity)
+
+ggsave(filename = "sentiment_subjectivity.png", 
+       plot = plot_sentiment_subjectivity, 
+       width = 9, height = 5, 
+       path = here::here("plots")) # als png
 ```
 
