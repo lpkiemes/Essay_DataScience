@@ -27,7 +27,7 @@ here::i_am("Twitter_02.Rmd") # Dateibezug
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 
 # Falls pakete nicht installiert sind werden sie installiert und Pakete werden geladen
-pacman::p_load(tidyverse, stringr, cld2, cld3) 
+pacman::p_load(tidyverse, stringr, cld2, cld3, lubridate) 
 
 date_analysis <- ymd("2022-07-01") # Referenzdatum
 ```
